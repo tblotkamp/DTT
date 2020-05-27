@@ -7,6 +7,8 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
@@ -102,7 +104,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
                     @Override
                     public void onComplete(@NonNull Task<Location> task) {
                         if (task.isSuccessful()) {
-                            // Set the map's camera position to the current location of the device.
+                            // Postavlja kameru mape na trenutnu lokaciju uređaja.
                             mLastKnownLocation = task.getResult();
                             if (mLastKnownLocation != null) {
                                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
@@ -126,7 +128,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
 
 
     /**
-     * Prompts the user for permission to use the device location.
+     * Šalje upit korisniku za dopuštenje korištenja lokacije.
      */
     private void getLocationPermission() {
         /*
@@ -205,8 +207,24 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
         // Dohvaća lokaciju uređaja.
         getDeviceLocation();
 
-        map.addMarker(new MarkerOptions()
-                .position(new LatLng(42.64112142, 18.102232))
-                .title("Parking"));
+        //Pristup bazi za pregled markera
+        MarkerHelper markerHelper = new MarkerHelper(con);
+        SQLiteDatabase db = markerHelper.getReadableDatabase();
+        Cursor c = db.query("markers", new String[] {"latitude",
+                        "longitude"}, null, null,
+                null, null, null);
+        if ((c != null) && (c.getCount() > 0)){
+            c.moveToFirst();
+            while (c.moveToNext()) {
+                double lati = Double.valueOf(c.getString(0));
+                double longi = Double.valueOf(c.getString(1));
+                Marker MarkerName = mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lati, longi))
+                        .title("Parking"));
+            }
+        }
+        c.close();
+        db.close();
+
     }
 }

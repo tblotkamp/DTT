@@ -10,6 +10,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
@@ -39,22 +40,20 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
     private CameraPosition mCameraPosition;
     private Context con;
 
-    // The entry point to the Fused Location Provider.
+    // Ulazna točka za Fused Location Provider.
     private FusedLocationProviderClient mFusedLocationProviderClient;
 
-    // The geographical location where the device is currently located. That is, the last-known
-    // location retrieved by the Fused Location Provider.
+    // Trenutna lokacija uređaja, tj. zadnja poznata lokacija preuzeta od Fused Location Providera.
     private Location mLastKnownLocation;
 
-    // A default location (Sydney, Australia) and default zoom to use when location permission is
-    // not granted.
+    // Početna lokacija i zoom postavljen kada nije dano dopuštenje pristupa lokaciji uređaja.
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
     private static final int DEFAULT_ZOOM = 15;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private boolean mLocationPermissionGranted;
 
 
-    // Keys for storing activity state.
+    // Povratak lokacije i pozicije kamere nakon nastavljanja aktivnosti.
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
 
@@ -64,26 +63,26 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
         super.onCreate(savedInstanceState);
         con=this;
 
-        // Retrieve location and camera position from saved instance state.
+        // Povratak lokacije i pozicije kamere nakon nastavljanja aktivnosti.
         if (savedInstanceState != null) {
             mLastKnownLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
         }
 
-        // Retrieve the content view that renders the map.
+
         setContentView(R.layout.activity_map);
 
-        // Construct a FusedLocationProviderClient.
+        // Stvaramo Fused Location Provider klijent.
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // Build the map.
+        // Gradimo kartu.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
 
     /**
-     * Saves the state of the map when the activity is paused.
+     * Čuva stanje karte kada je aplikacija pauzirana.
      */
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -96,8 +95,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
     private void getDeviceLocation() {
         /*
-         * Get the best and most recent location of the device, which may be null in rare
-         * cases when a location is not available.
+         * Dohvaća najbolju i najkasniju lokaciju uređaja.
          */
         try {
             if (mLocationPermissionGranted) {
@@ -106,7 +104,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
                     @Override
                     public void onComplete(@NonNull Task<Location> task) {
                         if (task.isSuccessful()) {
-                            // Set the map's camera position to the current location of the device.
+                            // Postavlja kameru mape na trenutnu lokaciju uređaja.
                             mLastKnownLocation = task.getResult();
                             if (mLastKnownLocation != null) {
                                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
@@ -130,12 +128,12 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
 
     /**
-     * Prompts the user for permission to use the device location.
+     * Šalje upit korisniku za dopuštenje korištenja lokacije.
      */
     private void getLocationPermission() {
         /*
-         * Request location permission, so that we can get the location of the
-         * device. The result of the permission request is handled by a callback,
+         * Tražimo dopuštenje pristupa lokaciji uređaja.
+         * Rezultat prihvaća callback metoda
          * onRequestPermissionsResult.
          */
         if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
@@ -150,7 +148,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
     }
 
     /**
-     * Updates the map's UI settings based on whether the user has granted location permission.
+     * Ažurira UI mape ovisno o tome je li korisnik prihvatio zahtjev za lokacijom.
      */
     private void updateLocationUI() {
         if (mMap == null) {
@@ -172,7 +170,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
     }
 
     /**
-     * Handles the result of the request for location permissions.
+     * Obrađiva rezultat zahtjeva za lokacijom.
      */
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -193,8 +191,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
 
     /**
-     * Manipulates the map when it's available.
-     * This callback is triggered when the map is ready to be used.
+     * Upravlja mapom kad je spremna za korištenje.
      */
     @Override
     public void onMapReady(GoogleMap map) {
@@ -204,16 +201,36 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
         mMap.setOnMarkerClickListener(this);
 
 
-        // Prompt the user for permission.
+        // Šalje korisniku zahtjev za pristup lokaciji uređaja.
         getLocationPermission();
 
-        // Turn on the My Location layer and the related control on the map.
+        // Pali sloj lokacije i povezane kontrole nad kartom.
         updateLocationUI();
 
-        // Get the current location of the device and set the position of the map.
+        // Dohvaća lokaciju uređaja.
         getDeviceLocation();
 
+        //Pristup bazi za pregled markera
+        MarkerHelper markerHelper = new MarkerHelper(con);
+        SQLiteDatabase db = markerHelper.getReadableDatabase();
+        Cursor c = db.query("markers", new String[] {"latitude",
+                        "longitude"}, null, null,
+                null, null, null);
+        if ((c != null) && (c.getCount() > 0)){
+            c.moveToFirst();
+            while (c.moveToNext()) {
+                double lati = Double.valueOf(c.getString(0));
+                double longi = Double.valueOf(c.getString(1));
+                Marker MarkerName = mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lati, longi))
+                        .title("Parking"));
+            }
+        }
+        c.close();
+        db.close();
+
     }
+
 
     /**
      * Kroz dijalog provjerava odluku korisnika o stvaranju markera te ga stvara ako je odluka
@@ -260,6 +277,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
                     public void onClick(DialogInterface dialog, int whichButton) {
 
+                        //Pristup bazi za brisanje markera
                         MarkerHelper markerHelper = new MarkerHelper(con);
                         SQLiteDatabase db = markerHelper.getWritableDatabase();
                         double lat = (marker.getPosition()).latitude;

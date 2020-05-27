@@ -14,7 +14,7 @@ public class MarkerHelper extends SQLiteOpenHelper {
 
 
     private static final String TABLE_MARKERS = "markers";
-    private static final String COLUMN_ID = "id";
+    private static final String COLUMN_ID = "_id";
     private static final String COLUMN_lati = "latitude";
     private static final String COLUMN_longi = "longitude";
 
