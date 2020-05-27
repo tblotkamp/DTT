@@ -1,0 +1,2 @@
+rootProject.name='DTT'
+include ':app'
