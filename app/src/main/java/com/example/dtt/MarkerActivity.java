@@ -262,15 +262,15 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
                         MarkerHelper markerHelper = new MarkerHelper(con);
                         SQLiteDatabase db = markerHelper.getWritableDatabase();
-                        double lat = marker.getPosition().latitude;
-                        double longit = marker.getPosition().longitude;
+                        double lat = (marker.getPosition()).latitude;
+                        double longit = (marker.getPosition()).longitude;
                         String lati = lat+"";
                         String longi = longit+"";
 
                         Toast.makeText(MarkerActivity.this, "Hvala.", Toast.LENGTH_SHORT).show();
                         marker.remove();
 
-                        db.delete("markers", " latitude = ?", new String[] {lati});
+                        db.delete("markers", "latitude = ? ", new String[] {lati});
                         db.close();
 
                     }})
