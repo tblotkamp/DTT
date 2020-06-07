@@ -12,18 +12,14 @@ import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
-import android.location.Location;
-import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -31,11 +27,9 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+public class ZastojActivity extends FragmentActivity implements OnMapReadyCallback {
 
-
-public class MapActivity extends FragmentActivity implements OnMapReadyCallback {
-
-    private static final String TAG = MapActivity.class.getSimpleName();
+    private static final String TAG = ParkingActivity.class.getSimpleName();
     private GoogleMap mMap;
     private CameraPosition mCameraPosition;
     private Context con;
@@ -210,17 +204,20 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
         //Pristup bazi za pregled markera
         MarkerHelper markerHelper = new MarkerHelper(con);
         SQLiteDatabase db = markerHelper.getReadableDatabase();
-        Cursor c = db.query("markers", new String[] {"latitude",
-                        "longitude"}, null, null,
+        Cursor c = db.query("jams", new String[] {"jamlatitude",
+                        "jamlongitude", "jamtime"}, null, null,
                 null, null, null);
         if ((c != null) && (c.getCount() > 0)){
             c.moveToFirst();
             while (c.moveToNext()) {
                 double lati = Double.valueOf(c.getString(0));
                 double longi = Double.valueOf(c.getString(1));
+                String vrijeme = c.getString(2);
                 Marker MarkerName = mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(lati, longi))
-                        .title("Parking"));
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                        .title("Zastoj")
+                        .snippet("Dodano u: " + vrijeme));
             }
         }
         c.close();

@@ -24,6 +24,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -31,6 +32,10 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 
 public class MarkerActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener {
@@ -39,6 +44,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
     private GoogleMap mMap;
     private CameraPosition mCameraPosition;
     private Context con;
+
 
     // Ulazna točka za Fused Location Provider.
     private FusedLocationProviderClient mFusedLocationProviderClient;
@@ -191,7 +197,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
 
 
     /**
-     * Upravlja mapom kad je spremna za korištenje.
+     * Upravlja kartom kad je spremna za korištenje.
      */
     @Override
     public void onMapReady(GoogleMap map) {
@@ -213,20 +219,65 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
         //Pristup bazi za pregled markera
         MarkerHelper markerHelper = new MarkerHelper(con);
         SQLiteDatabase db = markerHelper.getReadableDatabase();
-        Cursor c = db.query("markers", new String[] {"latitude",
-                        "longitude"}, null, null,
+        //Postavlja oznake parkinga
+        Cursor pr = db.query("parkings", new String[] {"parklatitude",
+                        "parklongitude", "parktime"}, null, null,
                 null, null, null);
-        if ((c != null) && (c.getCount() > 0)){
-            c.moveToFirst();
-            while (c.moveToNext()) {
-                double lati = Double.valueOf(c.getString(0));
-                double longi = Double.valueOf(c.getString(1));
-                Marker MarkerName = mMap.addMarker(new MarkerOptions()
+        if ((pr != null) && (pr.getCount() > 0)){
+            pr.moveToFirst();
+            while (pr.moveToNext()) {
+                double lati = Double.valueOf(pr.getString(0));
+                double longi = Double.valueOf(pr.getString(1));
+                mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(lati, longi))
-                        .title("Parking"));
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
             }
         }
-        c.close();
+        pr.close();
+        //Postavlja oznake zastoja
+        Cursor za = db.query("jams", new String[] {"jamlatitude",
+                        "jamlongitude"}, null, null,
+                null, null, null);
+        if ((za != null) && (za.getCount() > 0)){
+            za.moveToFirst();
+            while (za.moveToNext()) {
+                double lati = Double.valueOf(za.getString(0));
+                double longi = Double.valueOf(za.getString(1));
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lati, longi))
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+            }
+        }
+        za.close();
+        Cursor ra = db.query("radars", new String[] {"radarlatitude",
+                        "radarlongitude"}, null, null,
+                null, null, null);
+        if ((ra != null) && (ra.getCount() > 0)){
+            ra.moveToFirst();
+            while (ra.moveToNext()) {
+                double lati = Double.valueOf(ra.getString(0));
+                double longi = Double.valueOf(ra.getString(1));
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lati, longi))
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            }
+        }
+        ra.close();
+        Cursor pa = db.query("patrols", new String[] {"patrollatitude",
+                        "patrollongitude"}, null, null,
+                null, null, null);
+        if ((pa != null) && (pa.getCount() > 0)){
+            pa.moveToFirst();
+            while (pa.moveToNext()) {
+                double lati = Double.valueOf(pa.getString(0));
+                double longi = Double.valueOf(pa.getString(1));
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lati, longi))
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+            }
+        }
+        pa.close();
+
         db.close();
 
     }
@@ -238,7 +289,91 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
      */
     @Override
     public void onMapClick(final LatLng latLng) {
-        new AlertDialog.Builder(this)
+
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(MarkerActivity.this);
+        alertDialog.setTitle("Odaberite oznaku");
+        String[] items = {"Parking","Zastoj","Radar","Patrola"};
+        int checkedItem = 1;
+        alertDialog.setSingleChoiceItems(items, checkedItem, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                MarkerHelper markerHelper = new MarkerHelper(con);
+                SQLiteDatabase db = markerHelper.getWritableDatabase();
+                Calendar c = Calendar.getInstance();
+                SimpleDateFormat df = new SimpleDateFormat("HH:mm");
+                String formattedDate = df.format(c.getTime());
+                switch (which) {
+                    case 0:
+                        // U slučaju parkinga
+                        dialog.dismiss();
+                        Toast.makeText(MarkerActivity.this, "Oznaka dodana.", Toast.LENGTH_SHORT).show();
+                        mMap.addMarker(new MarkerOptions()
+                                .position(latLng)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+
+                        // Spremanje lokacije markera u bazu
+                        ContentValues koordParking = new ContentValues();
+                        koordParking.put("parklatitude", latLng.latitude);
+                        koordParking.put("parklongitude", latLng.longitude);
+                        koordParking.put("parktime", formattedDate);
+                        db.insert("parkings", null, koordParking);
+
+                        break;
+                    case 1:
+                        // U slučaju zastoja
+                        dialog.dismiss();
+                        Toast.makeText(MarkerActivity.this, "Oznaka dodana.", Toast.LENGTH_SHORT).show();
+                        mMap.addMarker(new MarkerOptions()
+                                .position(latLng)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
+                        // Spremanje lokacije markera u bazu
+                        ContentValues zastojValues = new ContentValues();
+                        zastojValues.put("jamlatitude", latLng.latitude);
+                        zastojValues.put("jamlongitude", latLng.longitude);
+                        zastojValues.put("jamtime", formattedDate);
+                        db.insert("jams", null, zastojValues);
+                        break;
+                    case 2:
+                        // U slučaju radara
+                        dialog.dismiss();
+                        Toast.makeText(MarkerActivity.this, "Oznaka dodana.", Toast.LENGTH_SHORT).show();
+                        mMap.addMarker(new MarkerOptions()
+                                .position(latLng)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+
+                        // Spremanje lokacije markera u bazu
+                        ContentValues radarValues = new ContentValues();
+                        radarValues.put("radarlatitude", latLng.latitude);
+                        radarValues.put("radarlongitude", latLng.longitude);
+                        radarValues.put("radartime", formattedDate);
+                        db.insert("radars", null, radarValues);
+                        break;
+                    case 3:
+                        // U slučaju patrole
+                        dialog.dismiss();
+                        Toast.makeText(MarkerActivity.this, "Oznaka dodana.", Toast.LENGTH_SHORT).show();
+                        mMap.addMarker(new MarkerOptions()
+                                .position(latLng)
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+
+                        // Spremanje lokacije markera u bazu
+                        ContentValues patrolaValues = new ContentValues();
+                        patrolaValues.put("patrollatitude", latLng.latitude);
+                        patrolaValues.put("patrollongitude", latLng.longitude);
+                        patrolaValues.put("patroltime", formattedDate);
+                        db.insert("patrols", null, patrolaValues);
+                        break;
+                }
+                db.close();
+            }
+        });
+        AlertDialog alert = alertDialog.create();
+        alert.setCanceledOnTouchOutside(false);
+        alert.show();
+    }
+        /**new AlertDialog.Builder(this)
+
                 .setMessage("Jeste li sigurni da želite dodati parking?")
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
@@ -253,16 +388,16 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
                         MarkerHelper markerHelper = new MarkerHelper(con);
                         SQLiteDatabase db = markerHelper.getWritableDatabase();
                         ContentValues koordValues = new ContentValues();
-                        koordValues.put("latitude", latLng.latitude);
-                        koordValues.put("longitude", latLng.longitude);
-                        db.insert("markers", null, koordValues);
+                        koordValues.put("parklatitude", latLng.latitude);
+                        koordValues.put("parklongitude", latLng.longitude);
+                        db.insert("parkings", null, koordValues);
                         db.close();
 
 
                     }})
                 .setNegativeButton(android.R.string.no, null).show();
+*/
 
-    }
 
     /**
      * Kroz dijalog provjerava odluku korisnika o brisanju i potom briše marker ako je odluka
@@ -271,7 +406,7 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
     @Override
     public boolean onMarkerClick(final Marker marker) {
         new AlertDialog.Builder(this)
-                .setMessage("Jeste li sigurni da želite izbrisati parking?")
+                .setMessage("Jeste li sigurni da želite izbrisati oznaku?")
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
@@ -285,10 +420,13 @@ public class MarkerActivity extends FragmentActivity implements OnMapReadyCallba
                         String lati = lat+"";
                         String longi = longit+"";
 
-                        Toast.makeText(MarkerActivity.this, "Hvala.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MarkerActivity.this, "Oznaka izbrisana.", Toast.LENGTH_SHORT).show();
                         marker.remove();
 
-                        db.delete("markers", "latitude = ? ", new String[] {lati});
+                        db.delete("parkings", "parklatitude = ? ", new String[] {lati});
+                        db.delete("jams", "jamlatitude = ? ", new String[] {lati});
+                        db.delete("radars", "radarlatitude = ? ", new String[] {lati});
+                        db.delete("patrols", "patrollatitude = ? ", new String[] {lati});
                         db.close();
 
                     }})

@@ -2,4 +2,7 @@
     <string name="app_name">DTT</string>
     <string name="title_activity_map">Map</string>
     <string name="title_activity_marker">Map</string>
+    <string name="title_activity_zastoj">Map</string>
+    <string name="title_activity_radar">Map</string>
+    <string name="title_activity_patrol">Map</string>
 </resources>
